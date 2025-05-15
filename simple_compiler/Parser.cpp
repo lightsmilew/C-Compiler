@@ -31,6 +31,8 @@ void Parser::_block(SyntaxTree father_tree) {
 		else if (sentence_pattern == "CONTROL")_control(sentence_tree.root);
 		//return语句
 		else if (sentence_pattern == "RETURN")_return(sentence_tree.root);
+		//表达式语句,跳过;
+		else if (sentence_pattern == "EXPRESSION") { _expression(sentence_tree.root); index++; }
 		//右大括号
 		else if (sentence_pattern == "RB_BRACKET")break;
 		else {
@@ -626,11 +628,12 @@ string Parser::_judge_sentence_pattern() {
 	if (index + 1 < tokens.size()&&token_type == "SHARP"  && tokens[index + 1].type_n == "INCLUDE") {
 		return "INCLUDE";
 	}
-	//函数调用或者赋值语句
+	//函数调用或者赋值语句，或者表达式语句
 	else if (index + 1 < tokens.size()&&token_type == "IDENTIFIER" ) {
 		string index_1_token_type = tokens[index + 1].type_n;
 		if (index_1_token_type == "LL_BRACKET")return "FUNCTION_CALL";
 		else if (index_1_token_type == "ASSIGN")return "ASSIGNMENT";
+		else if (index_1_token_type=="SELF_PLUS"|| index_1_token_type == "SELF_MINUS")return "EXPRESSION";
 		else return "ERROR";
 	}
 	//return语句

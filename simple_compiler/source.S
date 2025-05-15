@@ -86,5 +86,13 @@ pushl $label_6
 call printf
 add $16, %esp
 label_7:
+label_8:
+movl $1, %eax
+movl $2, %ebx
+cmp %eax,%ebx
+jmp label_9
+incl temp
+jmp label_8
+label_9:
 pushl $0
 call exit
