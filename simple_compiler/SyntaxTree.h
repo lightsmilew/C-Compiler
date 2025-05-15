@@ -26,9 +26,6 @@ class SyntaxTree {
 public :
     std::shared_ptr<SyntaxTreeNode>root, current;
     SyntaxTree(){}
-    SyntaxTree(std::shared_ptr<SyntaxTreeNode>node) {
-        root = current = node;
-    }
     //添加孩子节点
     void add_child_node(std::shared_ptr<SyntaxTreeNode>new_node, std::shared_ptr<SyntaxTreeNode>father = NULL) {
         //传入父节点为空，则从当前节点开始遍历

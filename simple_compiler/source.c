@@ -26,6 +26,5 @@ int main() {
          mean = 60 - mean ;
          printf( "the score of student number %d is %f lower than 60.\n", stu_number, mean ) ;
     }
-
     return 0;
 }

@@ -15,7 +15,7 @@ public:
         result = { ".data", ".bss", ".lcomm bss_tmp, 4", ".text" };
     }
 
-    void insert(const std::string& value, const std::string& type) {
+    size_t insert(const std::string& value, const std::string& type) {
         if (type == "DATA") {
             result.insert(result.begin() + dataPointer++, value);
             ++bssPointer;
@@ -27,7 +27,15 @@ public:
         }
         else if (type == "TEXT") {
             result.insert(result.begin() + textPointer++, value);
+            //返回在代码区的相对下标
+            return textPointer-bssPointer - 1;
         }
+        //报错
+        return -1;
+    }
+    void change(const std::string& value,const int& index) {
+        if (index < 0)return;
+        result[index+bssPointer] = value;
     }
     void generateAssFile(const std::string& fileName) const {
         std::ofstream file(fileName + ".S");
@@ -72,7 +80,7 @@ private:
     AssemblerFileHandler ass_file_handler;
     //第一项为类型
     std::map<std::string, SymbolTableItem> symbol_table;
-    std::map<std::string, std::string>labels_ifelse;
+    //std::map<std::string, std::string>labels_ifelse;
     std:: vector<string> sentence_type = {"Program","Sentence","Include","FunctionStatement","Statement","FunctionCall","Assignment","Control","Expression","Return"};
     std::stack<string>operator_stack;
     std::stack<OperandItem>operand_stack;

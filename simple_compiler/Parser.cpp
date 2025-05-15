@@ -248,14 +248,16 @@ void Parser::_while(std::shared_ptr<SyntaxTreeNode> father ) {
 	//识别while，目前未支持do{}while()结构
 	index++;
 	if (tokens[index].type_n == "LL_BRACKET") {
-		int tmp_index = index;
-		while (tmp_index < tokens.size() && tokens[index].type_n != "RL_BRACKET")tmp_index++;
+		int tmp_index = ++index;
+		while (tmp_index < tokens.size() && tokens[tmp_index].type_n != "RL_BRACKET")tmp_index++;
 		if (tmp_index < tokens.size())_expression(while_tree.root, tmp_index);
 		//未找到)匹配识别
 		else {
 			std::cout << "error:lack of ) in while sentence!" << std::endl;
 			exit(0);
 		}
+		//跳过)
+		index++;
 		if (tokens[index].type_n == "LB_BRACKET")_block(while_tree);
 		else if (tokens[index].type_n == "SEMICOLON")index++;
 		else {
@@ -373,12 +375,12 @@ void Parser::_expression(std::shared_ptr<SyntaxTreeNode> father , int in_index )
 	map<string, int> operator_priority = {
 		{">", 0}, {"<", 0}, {">=", 0}, {"<=", 0},
 		{"+", 1}, {"-", 1}, {"*", 2}, {"/", 2},
-		{"++", 3}, {"--", 3}, {"!", 3}
+		{"++", 3}, {"--", 3}, {"!", 3},{"==", 0}, {"!=", 0}
 	};
 	vector<string> child_operators_single = { "!", "++", "--" };
 	vector<string> child_operators_double = { "+", "-", "*", "/", ">", "<", ">=", "<=","==","!="};
 
-	stack<shared_ptr<SyntaxTreeNode>> operator_stack;
+	stack<SyntaxTree> operator_stack;
 	//逆波兰式表达式
 	vector<SyntaxTree> reverse_polish_expression;
 
@@ -402,15 +404,14 @@ void Parser::_expression(std::shared_ptr<SyntaxTreeNode> father , int in_index )
 			if (index + 1 < tokens.size() && tokens[index + 1].type_n == "LM_BRACKET") {
 				// 数组元素处理
 				is_array_item = true;
-				index += 2; // 跳过标识符和'['
-
 				SyntaxTree array_tree;
-				auto array_root = make_shared<SyntaxTreeNode>("Expression", "ArrayItem");
-				auto array_name_node = make_shared<SyntaxTreeNode>(current_token.value, "_ArrayName");
 
+				auto array_root = make_shared<SyntaxTreeNode>("Expression", "ArrayItem");
+				//识别标识符，即数组名
+				auto array_name_node = make_shared<SyntaxTreeNode>(current_token.value, "_ArrayName");
 				array_tree.root = array_tree.current = array_root;
 				array_tree.add_child_node(array_name_node, array_tree.root);
-
+				index += 2; // 跳过标识符和'['，识别下标
 				// 数组下标
 				if (tokens[index].type_n == "DIGIT_CONSTANT" || tokens[index].type_n == "IDENTIFIER") {
 					auto index_node = make_shared<SyntaxTreeNode>(tokens[index].value, "_ArrayIndex");
@@ -420,7 +421,6 @@ void Parser::_expression(std::shared_ptr<SyntaxTreeNode> father , int in_index )
 					cout<<" error: Array index must be a constant or identifier." << endl;
 					exit(0);
 				}
-
 				reverse_polish_expression.push_back(array_tree);
 			}
 
@@ -434,7 +434,7 @@ void Parser::_expression(std::shared_ptr<SyntaxTreeNode> father , int in_index )
 				reverse_polish_expression.push_back(expr_tree);
 			}
 		}
-		// 处理运算符
+		// 处理运算符或者()
 		else if (find(operators.begin(), operators.end(), current_token.value) != operators.end() ||
 			current_token.type_n == "LL_BRACKET" || current_token.type_n == "RL_BRACKET") {
 			SyntaxTree op_tree;
@@ -442,12 +442,12 @@ void Parser::_expression(std::shared_ptr<SyntaxTreeNode> father , int in_index )
 			shared_ptr<SyntaxTreeNode> op_node = make_shared<SyntaxTreeNode>(current_token.value, "_Operator");
 			op_tree.add_child_node(op_node,op_tree.root);
 			if (current_token.type_n == "LL_BRACKET") {
-				operator_stack.push(op_node);
+				operator_stack.push(op_tree);
 			}
 			//遇到右括号，弹栈直到遇到左括号为止
 			else if (current_token.type_n == "RL_BRACKET") {
-				while (!operator_stack.empty() && operator_stack.top()->node_value != "LL_BRACKET") {
-					reverse_polish_expression.push_back(SyntaxTree(operator_stack.top()));
+				while (!operator_stack.empty() && operator_stack.top().current->node_value != "LL_BRACKET") {
+					reverse_polish_expression.push_back(operator_stack.top());
 					operator_stack.pop();
 				}
 				if (!operator_stack.empty()) operator_stack.pop(); // 弹出左括号
@@ -455,21 +455,20 @@ void Parser::_expression(std::shared_ptr<SyntaxTreeNode> father , int in_index )
 			//其他只能是运算符
 			else {
 				while (!operator_stack.empty() &&
-					operator_priority.count(operator_stack.top()->node_value) &&
-					operator_priority[op_node->node_value] <= operator_priority[operator_stack.top()->node_value]) {
-					reverse_polish_expression.push_back(SyntaxTree(operator_stack.top()));
+					operator_priority.count(operator_stack.top().current->node_value) &&
+					operator_priority[op_node->node_value] <= operator_priority[operator_stack.top().current->node_value]) {
+					reverse_polish_expression.push_back(operator_stack.top());
 					operator_stack.pop();
 				}
-				operator_stack.push(op_node);
+				operator_stack.push(op_tree);
 			}
 		}
-
 		index++;
 	}
 
 	// 清空符号栈
 	while (!operator_stack.empty()) {
-		reverse_polish_expression.push_back(SyntaxTree(operator_stack.top()));
+		reverse_polish_expression.push_back(operator_stack.top());
 		operator_stack.pop();
 	}
 
@@ -482,23 +481,23 @@ void Parser::_expression(std::shared_ptr<SyntaxTreeNode> father , int in_index )
 		}
 		else {
 			//处理单目运算符
-			if (find(child_operators_single.begin(), child_operators_single.end(), item.root->node_value) != child_operators_single.end()) {
+			if (find(child_operators_single.begin(), child_operators_single.end(), item.current->node_value) != child_operators_single.end()) {
 				//缺少操作数
 				if (operand_stack.empty()) {
-					cout << " error: Not enough operands for unary operator: " << item.root->node_value << endl;
+					cout << " error: Not enough operands for unary operator: " << item.current->node_value << endl;
 					exit(0);
 				}
 				SyntaxTree a = operand_stack.top(); operand_stack.pop();
 				SyntaxTree new_expr;
 				new_expr.root = new_expr.current = make_shared<SyntaxTreeNode>("Expression", "SingleOperand");
-				new_expr.add_child_node(item.root, new_expr.root);
+				new_expr.add_child_node(item.current, new_expr.root);
 				new_expr.add_child_node(a.root, new_expr.root);
 				operand_stack.push(new_expr);
 			}
 			//处理双目运算符
-			else if (find(child_operators_double.begin(), child_operators_double.end(), item.root->node_value) != child_operators_double.end()) {
+			else if (find(child_operators_double.begin(), child_operators_double.end(), item.current->node_value) != child_operators_double.end()) {
 				if (operand_stack.size() < 2) {
-					cout << "error: Not enough operands for binary operator: " << item.root->node_value << endl;
+					cout << "error: Not enough operands for binary operator: " << item.current->node_value << endl;
 					exit(0);
 				}
 				SyntaxTree b = operand_stack.top(); operand_stack.pop();
@@ -507,12 +506,12 @@ void Parser::_expression(std::shared_ptr<SyntaxTreeNode> father , int in_index )
 				SyntaxTree new_expr;
 				new_expr.root = new_expr.current = make_shared<SyntaxTreeNode>("Expression", "DoubleOperand");
 				new_expr.add_child_node(a.root, new_expr.root);
-				new_expr.add_child_node(item.root, new_expr.root);
+				new_expr.add_child_node(item.current, new_expr.root);
 				new_expr.add_child_node(b.root, new_expr.root);
 				operand_stack.push(new_expr);
 			}
 			else {
-				cout << "error: Unsupported operator: " << item.root->node_value << endl;
+				cout << "error: Unsupported operator: " << item.current->node_value << endl;
 				exit(0);
 			}
 		}
