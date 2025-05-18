@@ -5,6 +5,8 @@
 
 extern vector<vector<string>> keywords;
 extern vector<string> operators;
+extern vector<string> single_operators;
+extern vector<string> double_operators;
 int strToInt(const std::string& str) {
 	std::stringstream ss(str);
 	int num;
@@ -32,6 +34,7 @@ void Parser::_block(SyntaxTree father_tree) {
 		//return语句
 		else if (sentence_pattern == "RETURN")_return(sentence_tree.root);
 		//表达式语句,跳过;
+		//目前仅支持自增和自减表达式出现在block中
 		else if (sentence_pattern == "EXPRESSION") { _expression(sentence_tree.root); index++; }
 		//右大括号
 		else if (sentence_pattern == "RB_BRACKET")break;
@@ -371,7 +374,7 @@ void Parser::_control(std::shared_ptr<SyntaxTreeNode> father ) {
 }
 //in_index用于标记识别到哪个token为止，默认值为0代表不遇到下一个;不停止
 //Expression->(Expression)|Expression Operation Expression|Operation Expression|Digit|Identifier[Expression]|Identifier
-//Operation-> >|<|>=|<=|+|-|*|/|++|--|!
+//Operation-> >|<|>=|<=|+|-|*|/|++|--|!=|==|！
 void Parser::_expression(std::shared_ptr<SyntaxTreeNode> father , int in_index ) {
 	if (father == NULL)father = tree.root;
 	map<string, int> operator_priority = {
@@ -379,8 +382,7 @@ void Parser::_expression(std::shared_ptr<SyntaxTreeNode> father , int in_index )
 		{"+", 1}, {"-", 1}, {"*", 2}, {"/", 2},
 		{"++", 3}, {"--", 3}, {"!", 3},{"==", 0}, {"!=", 0}
 	};
-	vector<string> child_operators_single = { "!", "++", "--" };
-	vector<string> child_operators_double = { "+", "-", "*", "/", ">", "<", ">=", "<=","==","!="};
+
 
 	stack<SyntaxTree> operator_stack;
 	//逆波兰式表达式
@@ -483,7 +485,7 @@ void Parser::_expression(std::shared_ptr<SyntaxTreeNode> father , int in_index )
 		}
 		else {
 			//处理单目运算符
-			if (find(child_operators_single.begin(), child_operators_single.end(), item.current->node_value) != child_operators_single.end()) {
+			if (find(single_operators.begin(), single_operators.end(), item.current->node_value) != single_operators.end()) {
 				//缺少操作数
 				if (operand_stack.empty()) {
 					cout << " error: Not enough operands for unary operator: " << item.current->node_value << endl;
@@ -497,7 +499,7 @@ void Parser::_expression(std::shared_ptr<SyntaxTreeNode> father , int in_index )
 				operand_stack.push(new_expr);
 			}
 			//处理双目运算符
-			else if (find(child_operators_double.begin(), child_operators_double.end(), item.current->node_value) != child_operators_double.end()) {
+			else if (find(double_operators.begin(), double_operators.end(), item.current->node_value) != double_operators.end()) {
 				if (operand_stack.size() < 2) {
 					cout << "error: Not enough operands for binary operator: " << item.current->node_value << endl;
 					exit(0);

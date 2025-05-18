@@ -59,3 +59,10 @@ vector<string> operators = {
 vector<char> delimiters = {
     '(', ')', '{', '}', '[', ']', ',', '\"', ';'
 };
+//单目运算符
+vector<string> single_operators = { "!", "++", "--" };
+//双目运算符
+vector<string> double_operators = { "+", "-", "*", "/", ">", "<", ">=", "<=","==","!=" };
+
+// 运算符对汇编指令的映射
+map<string, string> operator_map = { {">", "jbe"}, {"<", "jae"}, {">=", "jb"}, {"<=", "ja"} ,{"==","jne"},{"!=","je"} };

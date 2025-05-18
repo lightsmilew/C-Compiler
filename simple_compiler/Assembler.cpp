@@ -2,8 +2,10 @@
 #include<sstream>
 #include<iostream>
 #include<map>
-// 运算符对汇编指令的映射
-std::map<std::string, std::string> operator_map = { {">", "jbe"}, {"<", "jae"}, {">=", "jb"}, {"<=", "ja"} ,{"==","jne"},{"!=","je"} };
+
+extern vector<string> single_operators;
+extern vector<string> double_operators;
+extern map<string, string> operator_map;
 string Assembler::_sizeof(const std::string& _type) {
     int size = -1;
     if (_type == "int" || _type == "float" || _type == "long")size = 4;
@@ -464,9 +466,7 @@ ExpressionResult Assembler::_expression(std::shared_ptr<SyntaxTreeNode> node) {
     // 遍历表达式树，将操作数和操作符压栈
     _traverse_expression(node);
     // 双目运算符
-    std::vector<std::string> double_operators = { "+", "-", "*", "/", ">", "<", ">=", "<=","==","!="};
-    // 单目运算符
-    std::vector<std::string> single_operators = { "++", "--" };
+
 
     while (!operator_stack.empty()) {
         std::string op = operator_stack.top();
@@ -781,7 +781,8 @@ ExpressionResult Assembler::_expression(std::shared_ptr<SyntaxTreeNode> node) {
             OperandItem operand = operand_stack.top();
             operand_stack.pop();
             if (op == "++")ass_file_handler.insert("incl " + operand.operand, "TEXT");
-            else if(op=="--")ass_file_handler.insert("decl " + operand.operand, "TEXT");
+            else if (op == "--")ass_file_handler.insert("decl " + operand.operand, "TEXT");
+            //未处理!运算符
         }
         else {
             std::cout << "Unsupported operator: " << op << std::endl;
