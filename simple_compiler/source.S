@@ -90,7 +90,7 @@ label_8:
 movl $1, %eax
 movl $2, %ebx
 cmp %eax,%ebx
-jmp label_9
+jne label_9
 incl temp
 jmp label_8
 label_9:

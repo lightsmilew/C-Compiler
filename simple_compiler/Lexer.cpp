@@ -111,6 +111,7 @@ void Lexer::main() {
                     tokens.emplace_back(IDENTIFIER,temp);
                 }
             }
+            //如果是数字常量
             else if (isdigit(content[i])) {
                 string temp;
                 while (i < content.size()) {
@@ -119,7 +120,8 @@ void Lexer::main() {
                         cout << "error:float type is lack of number after . !" << endl;
                         exit(0);
                     }
-                    else if (is_delimiters(content[i])||is_operators(string(1, content[i]))) {
+                    //单字节操作符或者双字节
+                    else if (is_delimiters(content[i])||is_operators(string(1, content[i]))||is_operators(string(1, content[i]) + string(1, content[i+1]))) {
                         break;
                     }
                     //如果不是分隔符或者操作符结束则数字报错
@@ -154,15 +156,15 @@ void Lexer::main() {
                 }
                 i = skip_blank(i + 1);
             }
-            //如果是运算符
-            else if (is_operators(string(1,content[i]))){
+            //如果是运算符(单字节和双字节)
+            else if (is_operators(string(1,content[i]))|| is_operators(string(1, content[i])+ string(1, content[i+1]))){
                 //判断是自增或者自减符号
                 if ((content[i] == '+' || content[i] == '-') && content[i+1] == content[i]) {
                     tokens.emplace_back(OPERATOR, string(2,content[i]));
                     i = skip_blank(i + 2);
                 }
                 //判断是大于等于或者小于等于或者不等于符号
-                else if ((content[i] == '>' || content[i] == '<'||content[i]=='!') && content[i + 1] == '=') {
+                else if ((content[i] == '>' || content[i] == '<'||content[i]=='!'||content[i] == '=') && content[i + 1] == '=') {
                     tokens.emplace_back(OPERATOR, string(1,content[i])+string(1,'='));
                     i = skip_blank(i + 2);
                 }

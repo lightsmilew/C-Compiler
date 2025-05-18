@@ -40,6 +40,7 @@ string Assembler::join(const std::vector<std::string>& list, const std::string& 
 void Assembler::_function_statement(std::shared_ptr<SyntaxTreeNode> node) {
     std::shared_ptr<SyntaxTreeNode>current_node = node->first_son;
     while (current_node != NULL) {
+        //处理函数名
         if (current_node->node_value == "FunctionName") {
             if (current_node->first_son->node_value != "main") {
                 std::cout << "other function statement except for main is not supported!" << std::endl;
@@ -51,10 +52,12 @@ void Assembler::_function_statement(std::shared_ptr<SyntaxTreeNode> node) {
                 ass_file_handler.insert("finit", "TEXT");
             }
         }
+        //处理函数体
         else if (current_node->node_value == "Sentence")traverse(current_node->first_son);
         current_node = current_node->right;
     }
 }
+//直接保存为全局变量
 void Assembler::_statement(std::shared_ptr<SyntaxTreeNode> node) {
     std::string line;
     std::string variable_field_type; // 数据类型：int, float 等
@@ -132,7 +135,7 @@ void Assembler::_function_call(std::shared_ptr<SyntaxTreeNode> node) {
                 }
                 else if (tmp_node->node_type == "IDENTIFIER")parameter_list.push_back(tmp_node->node_value);
                 else if (tmp_node->node_type == "ADDRESS") {
-                    // TODO: Handle address parameters
+                    // TODO-> Handle address parameters
                 }
                 else {
                     //其他类型的参数暂不支持
@@ -374,10 +377,11 @@ void Assembler::_control_while(std::shared_ptr<SyntaxTreeNode> node) {
     auto current_node = node->first_son;
     std::string label_begin= "label_" + std::to_string(label_cnt++);
     std::string label_end = "label_" + std::to_string(label_cnt++);
+    ExpressionResult ex_tmp;
     int end_jmp_index;
     if (current_node->node_value == "Expression") {
         ass_file_handler.insert(label_begin+":", "TEXT");
-        _expression(current_node);
+        ex_tmp=_expression(current_node);
         //跳过block,插入跳转end语句块指令
         end_jmp_index = ass_file_handler.insert("", "TEXT");
 
@@ -396,7 +400,7 @@ void Assembler::_control_while(std::shared_ptr<SyntaxTreeNode> node) {
         ass_file_handler.insert(line, "TEXT");
 
         //回填end地址
-        line = "jmp " + label_end;
+        line = operator_map[ex_tmp.value] + " " + label_end;
         ass_file_handler.change(line, end_jmp_index);
     }
     else {

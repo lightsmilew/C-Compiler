@@ -30,6 +30,8 @@ map<string, string>map_token_type = {
     {"/", "DIV"},
     {">=", "GET"},
     {"<=", "LET"},
+    {"==", "EQUAL"},
+    {"!=", "NOT_EQUAL"},
     {"(", "LL_BRACKET"},
     {")", "RL_BRACKET"},
     {"{", "LB_BRACKET"},
@@ -50,7 +52,7 @@ vector<vector<string>> keywords = {
 
 // ÔËËã·û
 vector<string> operators = {
-    "=", "&", "<", ">", "++", "--", "+", "-", "*", "/", ">=", "<=", "!="
+    "=", "&", "<", ">", "++", "--", "+", "-", "*", "/", ">=", "<=","==", "!=","!"
 };
 
 // ·Ö¸ô·û
