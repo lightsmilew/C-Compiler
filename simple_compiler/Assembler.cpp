@@ -544,7 +544,7 @@ void Assembler::_return(std::shared_ptr<SyntaxTreeNode> node) {
             line = "pushl $" + expres.value;
         }
         else {
-             if (func_return_field_type == "int")line = "movl %eax," + expres.value;
+             if (func_return_field_type == "int")line = "movl " + expres.value+",%eax";
              else if (func_return_field_type == "float")line = "filds "+expres.value;
              else {
                     std::cout << "not supported type of return!" << std::endl;

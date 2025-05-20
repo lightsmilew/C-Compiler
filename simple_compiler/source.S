@@ -24,7 +24,7 @@ addl b, %eax
 movl %eax,bss_tmp
 movl bss_tmp, %edi
 movl %edi, c
-movl %eax,c
+movl c,%eax
 popl %esi
 popl %edi
 ret
@@ -109,5 +109,11 @@ jne label_5
 incl temp
 jmp label_4
 label_5:
+pushl %eax
+pushl %edi
+movl $1,%edi
+pushl %esi
+movl $2,%esi
+call test
 pushl $0
 call exit
