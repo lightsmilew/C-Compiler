@@ -33,9 +33,9 @@ public:
         //±¨´í
         return -1;
     }
-    void change(const std::string& value,const int& index) {
-        if (index < 0)return;
-        result[index+bssPointer] = value;
+    void setCode(const std::string& value,const int& offset) {
+        if (offset < 0)return;
+        result[offset+bssPointer] = value;
     }
     void generateAssFile(const std::string& fileName) const {
         std::ofstream file(fileName + ".S");

@@ -119,11 +119,6 @@ void Assembler::_function_statement(std::shared_ptr<SyntaxTreeNode> node) {
         }
         current_node = current_node->right;
     }
-
-    //清除局部变量声明
-    for (auto p : para_list) {
-        symbol_table.erase(p);
-    }
     //main函数在结尾插入call exit调用程序退出汇编指令
     if (func_name == "main") {
         line = "call exit";
@@ -148,7 +143,12 @@ void Assembler::_statement(std::shared_ptr<SyntaxTreeNode> node) {
         else if (current_node->node_type == "IDENTIFIER") {
             // 获取变量名和类型（来自 extra_info）
             variable_name = current_node->node_value;
-            variable_type = current_node->extra_info["type"]; 
+            variable_type = current_node->extra_info["type"];
+            //已经定义了同名变量
+            if (symbol_table.find(variable_name) != symbol_table.end()) {
+                std::cout << "identifier has existed!" << std::endl;
+                exit(0);
+            }
             line = ".lcomm " + variable_name + ", " + _sizeof(variable_field_type);
         }
         //常量列表
@@ -177,18 +177,16 @@ void Assembler::_statement(std::shared_ptr<SyntaxTreeNode> node) {
 }
 void Assembler::_function_call(std::shared_ptr<SyntaxTreeNode> node) {
     if (!node || !node->first_son) return;
-
     auto current_node = node->first_son;
     std::string func_name;
     std::vector<std::string> parameter_list;
+    std::string line;
     int para_count = 0;
     while (current_node != NULL) {
         if (current_node->node_type == "FUNCTION_NAME") {
             func_name = current_node->node_value;
             if (func_name != "printf" && func_name != "scanf") {
-                //std::cout << "Function call except scanf and printf not supported yet!" << std::endl;
-                //exit(0);
-                std::string line = "call " + func_name;
+                line = "call " + func_name;
             }
         }
         else if (current_node->node_value == "CallParameterList") {
@@ -199,7 +197,7 @@ void Assembler::_function_call(std::shared_ptr<SyntaxTreeNode> node) {
                         std::string label = "var_" + std::to_string(variable_cnt++);
                         //如果是字符串常量
                         if (tmp_node->node_type == "STRING_CONSTANT") {
-                            std::string line = label + ": .asciz \"" + tmp_node->node_value + "\"";
+                            line = label + ": .asciz \"" + tmp_node->node_value + "\"";
                             ass_file_handler.insert(line, "DATA");
                             symbol_table[label] = { "STRING_CONSTANT", "value", tmp_node->node_value };
                         }
@@ -231,7 +229,7 @@ void Assembler::_function_call(std::shared_ptr<SyntaxTreeNode> node) {
                 //caller参数传递
                 while (tmp_node != NULL) {
                     if (tmp_node->node_type == "DIGIT_CONSTANT") {
-                        std::string line = "pushl $" + tmp_node->node_value ;
+                        line = "pushl $" + tmp_node->node_value ;
                         ass_file_handler.insert(line, "TEXT");
                     }
                     else if (tmp_node->node_type == "IDENTIFIER") {
@@ -240,7 +238,7 @@ void Assembler::_function_call(std::shared_ptr<SyntaxTreeNode> node) {
                             std::cout << "Symbol not found in table: " << tmp_node->node_value << std::endl;
                             exit(0);
                         }
-                        std::string line = "pushl " + tmp_node->node_value ;
+                        line = "pushl " + tmp_node->node_value ;
                         ass_file_handler.insert(line, "TEXT");
                     }
                     else {
@@ -257,7 +255,7 @@ void Assembler::_function_call(std::shared_ptr<SyntaxTreeNode> node) {
     }
     //如果不是库函数则直接call调用
     if (func_name != "printf" && func_name != "scanf") {
-        std::string line = "call " + func_name;
+        line = "call " + func_name;
         ass_file_handler.insert(line, "TEXT");
 
         line = "addl $" +to_string(4*para_count)+",%esp";
@@ -277,7 +275,7 @@ void Assembler::_function_call(std::shared_ptr<SyntaxTreeNode> node) {
             }
 
             if (sym->second.type == "STRING_CONSTANT") {
-                std::string line = "pushl $" + param;
+                line = "pushl $" + param;
                 ass_file_handler.insert(line, "TEXT");
                 num_bytes += 4;
             }
@@ -285,12 +283,12 @@ void Assembler::_function_call(std::shared_ptr<SyntaxTreeNode> node) {
                 //field_type
                 std::string field_type = sym->second.data;
                 if (field_type == "int") {
-                    std::string line = "pushl " + param;
+                    line = "pushl " + param;
                     ass_file_handler.insert(line, "TEXT");
                     num_bytes += 4;
                 }
                 else if (field_type == "float") {
-                    std::string line = "flds " + param;
+                    line = "flds " + param;
                     ass_file_handler.insert(line, "TEXT");
 
                     line = "subl $8, %esp";
@@ -329,7 +327,7 @@ void Assembler::_function_call(std::shared_ptr<SyntaxTreeNode> node) {
             }
 
             if (sym->second.type == "STRING_CONSTANT" || sym->second.type == "VARIABLE") {
-                std::string line = "pushl $" + param;
+                line = "pushl $" + param;
                 ass_file_handler.insert(line, "TEXT");
                 num_bytes += 4;
             }
@@ -352,7 +350,7 @@ void Assembler::_assignment(std::shared_ptr<SyntaxTreeNode> node) {
     }
 
     auto current_node = node->first_son;
-
+    std::string line;
     // 检查是否是赋值格式：左操作数是 IDENTIFIER，右操作数是 Expression
     if (current_node->node_type == "IDENTIFIER" && current_node->right && current_node->right->node_value == "Expression") {
         ExpressionResult expres = _expression(current_node->right);
@@ -363,11 +361,11 @@ void Assembler::_assignment(std::shared_ptr<SyntaxTreeNode> node) {
 
         if (field_type == "int") {
             if (expres.type == "CONSTANT") {
-                std::string line = "movl $" + expres.value + ", " + variable_name;
+                line = "movl $" + expres.value + ", " + variable_name;
                 ass_file_handler.insert(line, "TEXT");
             }
             else if (expres.type == "VARIABLE") {
-                std::string line = "movl " + expres.value + ", %edi";
+                line = "movl " + expres.value + ", %edi";
                 ass_file_handler.insert(line, "TEXT");
 
                 line = "movl %edi, " + variable_name;
@@ -376,7 +374,7 @@ void Assembler::_assignment(std::shared_ptr<SyntaxTreeNode> node) {
         }
         else if (field_type == "float") {
             if (expres.type == "CONSTANT") {
-                std::string line = "movl $" + expres.value + "," + variable_name;
+                line = "movl $" + expres.value + "," + variable_name;
                 ass_file_handler.insert(line, "TEXT");
 
                 //压栈
@@ -387,7 +385,7 @@ void Assembler::_assignment(std::shared_ptr<SyntaxTreeNode> node) {
             }
             else if (expres.type == "VARIABLE"){
                 // 直接存储 FPU 栈顶的值到目标变量
-                std::string line = "fstps " + variable_name;
+                line = "fstps " + variable_name;
                 ass_file_handler.insert(line, "TEXT");
             }
         }
@@ -408,6 +406,7 @@ void Assembler::_control_for(std::shared_ptr<SyntaxTreeNode> node) {
     int cnt = 2; // 控制哪一个是条件表达式，cnt为2则为条件判断式
     int if_jmp_index = -1;
     ExpressionResult ex_tmp;
+    std::string line;
     // 第一部分：初始化（赋值语句）
     if (current_node && current_node->node_value == "Assignment") {
         _assignment(current_node);
@@ -416,7 +415,7 @@ void Assembler::_control_for(std::shared_ptr<SyntaxTreeNode> node) {
     // 第二部分：条件表达式（进入循环的判断条件）
     if (current_node && current_node->node_value == "Expression"&&cnt==2) {
         cnt++;
-        std::string line = "label_" + std::to_string(jump_cnt++) + ":";
+        line = "label_" + std::to_string(jump_cnt++) + ":";
         ass_file_handler.insert(line, "TEXT");
         ex_tmp=_expression(current_node);
         //生成跳转指令,跳转地址待定
@@ -438,8 +437,8 @@ void Assembler::_control_for(std::shared_ptr<SyntaxTreeNode> node) {
     std::string end_label = "label_" + std::to_string(jump_cnt++) + ":";
     ass_file_handler.insert(end_label, "TEXT");
     //确定跳转指令地址，修改跳转指令
-    std::string line = operator_map[ex_tmp.value] + " " + end_label;
-    ass_file_handler.change(line, if_jmp_index);
+    line = operator_map[ex_tmp.value] + " " + end_label;
+    ass_file_handler.setCode(line, if_jmp_index);
 }
 void Assembler::_control_if(std::shared_ptr<SyntaxTreeNode> node) {
     if (!node || !node->first_son) return;
@@ -468,7 +467,7 @@ void Assembler::_control_if(std::shared_ptr<SyntaxTreeNode> node) {
             ass_file_handler.insert(line, "TEXT");
             //回填else地址
             line = operator_map[ex_tmp.value]+" " +label_else;
-            ass_file_handler.change(line, else_jmp_index);
+            ass_file_handler.setCode(line, else_jmp_index);
         }
         else if (current_node->node_value == "ElseControl") {
             traverse(current_node->first_son);
@@ -478,7 +477,7 @@ void Assembler::_control_if(std::shared_ptr<SyntaxTreeNode> node) {
             ass_file_handler.insert(line, "TEXT");
             //回填end地址
             line = "jmp " + label_end;
-            ass_file_handler.change(line, end_jmp_index);
+            ass_file_handler.setCode(line, end_jmp_index);
         }
         current_node = current_node->right;
     }
@@ -489,6 +488,7 @@ void Assembler::_control_while(std::shared_ptr<SyntaxTreeNode> node) {
     auto current_node = node->first_son;
     std::string label_begin= "label_" + std::to_string(jump_cnt++);
     std::string label_end = "label_" + std::to_string(jump_cnt++);
+    std::string line;
     ExpressionResult ex_tmp;
     int end_jmp_index;
     if (current_node->node_value == "Expression") {
@@ -506,14 +506,14 @@ void Assembler::_control_while(std::shared_ptr<SyntaxTreeNode> node) {
     //循环部分
     if (current_node && current_node->node_value == "Sentence") {
         traverse(current_node->first_son);
-        std::string line = "jmp " + label_begin;
+        line = "jmp " + label_begin;
         ass_file_handler.insert(line, "TEXT");
         line = label_end + ":";
         ass_file_handler.insert(line, "TEXT");
 
         //回填end地址
         line = operator_map[ex_tmp.value] + " " + label_end;
-        ass_file_handler.change(line, end_jmp_index);
+        ass_file_handler.setCode(line, end_jmp_index);
     }
     else {
         std::cout << "control_while_block error!" << std::endl;
@@ -557,19 +557,7 @@ void Assembler::_return(std::shared_ptr<SyntaxTreeNode> node) {
 }
 void Assembler::_traverse_expression(std::shared_ptr<SyntaxTreeNode> node) {
     if (node == NULL)return;
-    if (node->node_type == "_Variable") { 
-       /* if(!_is_contain_function(node->node_value))*/operand_stack.push({ "VARIABLE",node->node_value });
-        ////函数调用
-        //else {
-        //    //取出eax变量
-        //    std::string line = "movl %eax,bss_tmp";
-        //    ass_file_handler.insert(line, "TEXT");
-        //    //恢复eax寄存器
-        //    line = "popl %eax";
-        //    ass_file_handler.insert(line, "TEXT");
-        //    operand_stack.push({ "VARIABLE","bss_tmp"});
-        //}
-    }
+    if (node->node_type == "_Variable")operand_stack.push({ "VARIABLE",node->node_value });
     else if (node->node_type == "_Constant")operand_stack.push({ "CONSTANT",node->node_value });
     else if (node->node_type == "_Operator")operator_stack.push(node->node_value);
     else if (node->node_type == "_ArrayName") {
@@ -580,6 +568,7 @@ void Assembler::_traverse_expression(std::shared_ptr<SyntaxTreeNode> node) {
         return;
     }
     auto current_node = node->first_son;
+    //dfs遍历
     while (current_node != NULL) {
         _traverse_expression(current_node);
         current_node = current_node->right;
@@ -611,12 +600,12 @@ ExpressionResult Assembler::_expression(std::shared_ptr<SyntaxTreeNode> node) {
             operand_stack.pop();
 
             bool contain_float = _contain_float(operand_a, operand_b);
-
+            std::string line;
             if (op == "+") {
                 if (contain_float) {
                     //flds：加载浮点常量或变量到 FPU 浮点寄存器栈。
                     //filds：加载整型数据并转换为浮点数后压入 FPU 栈。
-                    std::string line = (_is_float(operand_a) ? "flds " : "filds ") + operand_a.operand;
+                    line = (_is_float(operand_a) ? "flds " : "filds ") + operand_a.operand;
                     ass_file_handler.insert(line, "TEXT");
 
                     //a已加载到栈顶
@@ -632,7 +621,6 @@ ExpressionResult Assembler::_expression(std::shared_ptr<SyntaxTreeNode> node) {
                     symbol_table["bss_tmp"] =SymbolTableItem("IDENTIFIER","field_type","float");
                 }
                 else {
-                    std::string line;
                     // 处理整型加法
                     //第一个操作数
                     if (operand_a.type == "ARRAY_ITEM") {
@@ -678,7 +666,7 @@ ExpressionResult Assembler::_expression(std::shared_ptr<SyntaxTreeNode> node) {
                 if (contain_float) {
                     //flds：加载浮点常量或变量到 FPU 浮点寄存器栈。
                     //filds：加载整型数据并转换为浮点数后压入 FPU 栈。
-                    std::string line = (_is_float(operand_a) ? "flds " : "filds ") + operand_a.operand;
+                    line = (_is_float(operand_a) ? "flds " : "filds ") + operand_a.operand;
                     ass_file_handler.insert(line, "TEXT");
 
                     //a已加载到栈顶
@@ -694,7 +682,6 @@ ExpressionResult Assembler::_expression(std::shared_ptr<SyntaxTreeNode> node) {
                     symbol_table["bss_tmp"] = SymbolTableItem("IDENTIFIER", "field_type", "float");
                 }
                 else {
-                    std::string line;
                     // 处理整型减法
                     //第一个操作数
                     if (operand_a.type == "ARRAY_ITEM") {
@@ -743,7 +730,6 @@ ExpressionResult Assembler::_expression(std::shared_ptr<SyntaxTreeNode> node) {
                 }
                 //整数乘法,mull只有一个操作数 如mull %ecx  edx:eax->eax*ecx
                 else {
-                    std::string line;
                     if (operand_a.type == "ARRAY_ITEM") {
                         line = "movl " + operand_a.operand_array_index + ", %edi";
                         ass_file_handler.insert(line, "TEXT");
@@ -785,7 +771,7 @@ ExpressionResult Assembler::_expression(std::shared_ptr<SyntaxTreeNode> node) {
             else if (op == "/") {
                 //浮点数除法
                 if (contain_float) {
-                    std::string line = (_is_float(operand_a) ? "flds " : "filds ") + operand_a.operand;
+                    line = (_is_float(operand_a) ? "flds " : "filds ") + operand_a.operand;
                     ass_file_handler.insert(line, "TEXT");
 
                     //a已加载到栈顶
@@ -802,7 +788,6 @@ ExpressionResult Assembler::_expression(std::shared_ptr<SyntaxTreeNode> node) {
                 }
                 //整数除法
                 else {
-                    std::string line;
                     if (operand_a.type == "ARRAY_ITEM") {
                         line = "movl " + operand_a.operand_array_index + ", %edi";
                         ass_file_handler.insert(line, "TEXT");
@@ -844,7 +829,7 @@ ExpressionResult Assembler::_expression(std::shared_ptr<SyntaxTreeNode> node) {
             //比较运算符，此时返回比较运算符的类型如{BOOLEAN,>=}
             else if (op == ">="|| op == "<"|| op == "<="|| op == ">"|| op == "=="||op=="!=") {
                 if (contain_float) {
-                    std::string line = (_is_float(operand_a) ? "flds " : "filds ") + operand_a.operand;
+                    line = (_is_float(operand_a) ? "flds " : "filds ") + operand_a.operand;
                     ass_file_handler.insert(line, "TEXT");
 
                     //a已加载到栈顶
@@ -865,7 +850,6 @@ ExpressionResult Assembler::_expression(std::shared_ptr<SyntaxTreeNode> node) {
                     return { "BOOLEAN",op};
                 }
                 else {
-                    std::string line;
                     if (operand_a.type == "ARRAY_ITEM") {
                         line = "movl " + operand_a.operand_array_index + ", %edi";
                         ass_file_handler.insert(line, "TEXT");
@@ -897,7 +881,6 @@ ExpressionResult Assembler::_expression(std::shared_ptr<SyntaxTreeNode> node) {
                     }
                     line = "cmp %eax,%ebx";
                     ass_file_handler.insert(line, "TEXT");
-
 
                     return { "BOOLEAN",op };
                 }

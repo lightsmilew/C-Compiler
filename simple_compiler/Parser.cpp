@@ -429,20 +429,8 @@ void Parser::_expression(std::shared_ptr<SyntaxTreeNode> father , int in_index )
 				}
 				reverse_polish_expression.push_back(array_tree);
 			}
-			////处理函数调用（包括返回值）
-			//else if (index + 1 < tokens.size() && tokens[index + 1].type_n == "LL_BRACKET") {
-			//	SyntaxTree expr_tree;
-			//	auto root = make_shared<SyntaxTreeNode>("Expression", "Variable");
-			//	auto variable_node = make_shared<SyntaxTreeNode>(current_token.value, "_Variable");
-			//	expr_tree.root = expr_tree.current = root;
-			//	expr_tree.add_child_node(variable_node, root);
-			//	reverse_polish_expression.push_back(expr_tree);
-			//	//跳过函数调用传参识别部分
-			//	while (tokens[index].type_n != "RL_BRACKET")index++;
-			//	index++;
-			//}
 			//普通变量
-			if (is_variable) {
+			else if (is_variable&& tokens[index + 1].type_n != "LL_BRACKET") {
 				// 变量处理
 				SyntaxTree expr_tree;
 				auto root = make_shared<SyntaxTreeNode>("Expression", "Variable");
@@ -450,6 +438,10 @@ void Parser::_expression(std::shared_ptr<SyntaxTreeNode> father , int in_index )
 				expr_tree.root = expr_tree.current = root;
 				expr_tree.add_child_node(variable_node, root);
 				reverse_polish_expression.push_back(expr_tree);
+			}
+			//函数调用值
+			else if(is_variable && tokens[index + 1].type_n == "LL_BRACKET"){
+				
 			}
 		}
 		// 处理运算符或者()
@@ -595,7 +587,8 @@ void Parser::_function_call(std::shared_ptr<SyntaxTreeNode> father ) {
 		//识别下一个参数
 	}
 	//识别到),跳过自增1
-	if (tokens[++index].type_n != "SEMICOLON") {
+	index++;
+	if (tokens[index].type_n != "SEMICOLON") {
 		std::cout << "error:lack of ; in function_call!" << std::endl;
 		exit(0);
 	}
