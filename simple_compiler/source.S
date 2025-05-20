@@ -19,8 +19,8 @@ var_3: .asciz "the score of student number %d is %f lower than 60.\n"
 test:
 pushl %ebp
 movl %eap,%ebp
-movl %8(%ebp),a
-movl %12(%ebp),b
+movl %12(%ebp),a
+movl %8(%ebp),b
 movl a, %eax
 addl b, %eax
 movl %eax,bss_tmp
@@ -36,11 +36,11 @@ pushl %ebp
 movl %eap,%ebp
 pushl $var_0
 call printf
-add $4, %esp
+addl $4, %esp
 pushl $stu_number
 pushl $var_1
 call scanf
-add $8, %esp
+addl $8, %esp
 movl $0,sum
 filds sum
 fstps sum
@@ -89,7 +89,7 @@ fstpl (%esp)
 pushl stu_number
 pushl $var_2
 call printf
-add $16, %esp
+addl $16, %esp
 jmp label_3
 label_2:
 filds 60
@@ -102,7 +102,7 @@ fstpl (%esp)
 pushl stu_number
 pushl $var_3
 call printf
-add $16, %esp
+addl $16, %esp
 label_3:
 label_4:
 movl $1, %eax

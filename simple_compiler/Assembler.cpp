@@ -4,7 +4,6 @@
 
 extern vector<string> single_operators;
 extern vector<string> double_operators;
-extern vector<string>reg;
 extern map<string, string> operator_map;
 
 string Assembler::_sizeof(const std::string& _type) {
@@ -50,6 +49,7 @@ void Assembler::_function_statement(std::shared_ptr<SyntaxTreeNode> node) {
     std::vector<string>para_list;
     std::string func_name = "";
     std::string func_type = "";
+    std::string line = "";
     int para_count = 0;
     while (current_node != NULL) {
         //处理返回值类型
@@ -73,7 +73,7 @@ void Assembler::_function_statement(std::shared_ptr<SyntaxTreeNode> node) {
         else if (current_node->node_value == "StateParameterList") {
             // 解析参数并生成相应的汇编代码
             //记录参数的数量
-            std::string line = "pushl %ebp";
+            line = "pushl %ebp";
             ass_file_handler.insert(line, "TEXT");
             line = "movl %eap,%ebp";
             ass_file_handler.insert(line, "TEXT");
@@ -98,19 +98,20 @@ void Assembler::_function_statement(std::shared_ptr<SyntaxTreeNode> node) {
                 symbol_table[para_name] = SymbolTableItem{
                     "VARIABLE","field_type", para_field_type
                 };
-
-                //插入赋值语句，初始化入口参数
-                line = "movl %" + to_string(4*(para_count+1))+"(%ebp)" + "," + para_name;
-                ass_file_handler.insert(line, "TEXT");
-
                 parameter_node = parameter_node->right;
+            }
+            //
+            for (int i = 0; i <para_count; i++) {
+                //插入赋值语句，初始化入口参数 栈的顺序相反
+                line = "movl %" + to_string(4 * (para_count-i+1)) + "(%ebp)" + "," + para_list[i];
+                ass_file_handler.insert(line, "TEXT");
             }
         }
         //处理函数体
         else if (current_node->node_value == "Sentence") { 
             traverse(current_node->first_son); 
             if (func_name != "main") {
-                std::string line = "popl %ebp";
+                line = "popl %ebp";
                 ass_file_handler.insert(line, "TEXT");
                 //插入返回指令
                 ass_file_handler.insert("ret", "TEXT");
@@ -125,7 +126,7 @@ void Assembler::_function_statement(std::shared_ptr<SyntaxTreeNode> node) {
     }
     //main函数在结尾插入call exit调用程序退出汇编指令
     if (func_name == "main") {
-        std::string line = "call exit";
+        line = "call exit";
         ass_file_handler.insert(line, "TEXT");
     }
     function_table[func_name] = func_type;
@@ -313,7 +314,7 @@ void Assembler::_function_call(std::shared_ptr<SyntaxTreeNode> node) {
         //插入函数调用
         ass_file_handler.insert("call printf", "TEXT");
         if (num_bytes > 0) {
-            ass_file_handler.insert("add $" + std::to_string(num_bytes) + ", %esp", "TEXT");
+            ass_file_handler.insert("addl $" + std::to_string(num_bytes) + ", %esp", "TEXT");
         }
 
     }
@@ -340,7 +341,7 @@ void Assembler::_function_call(std::shared_ptr<SyntaxTreeNode> node) {
 
         ass_file_handler.insert("call scanf", "TEXT");
         if (num_bytes > 0) {
-            ass_file_handler.insert("add $" + std::to_string(num_bytes) + ", %esp", "TEXT");
+            ass_file_handler.insert("addl $" + std::to_string(num_bytes) + ", %esp", "TEXT");
         }
     }
 }
