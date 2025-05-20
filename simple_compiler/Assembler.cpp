@@ -1,11 +1,12 @@
 #include"Assembler.h"
 #include<sstream>
 #include<iostream>
-#include<map>
 
 extern vector<string> single_operators;
 extern vector<string> double_operators;
+extern vector<string>reg;
 extern map<string, string> operator_map;
+
 string Assembler::_sizeof(const std::string& _type) {
     int size = -1;
     if (_type == "int" || _type == "float" || _type == "long")size = 4;
@@ -29,6 +30,11 @@ bool Assembler::_is_contain_sentence(const std::string& sentence) {
     }
     return false;
 }
+bool Assembler::_is_contain_function(const std::string& function_name) {
+    auto func = symbol_table.find(function_name);
+    if (func == symbol_table.end())return false;
+    return true;
+}
 //将数组用指定分隔符连接
 string Assembler::join(const std::vector<std::string>& list, const std::string& sep) {
     if (list.empty()) return "";
@@ -41,12 +47,21 @@ string Assembler::join(const std::vector<std::string>& list, const std::string& 
 //暂时只支持main函数，目前没有处理函数参数和返回值
 void Assembler::_function_statement(std::shared_ptr<SyntaxTreeNode> node) {
     std::shared_ptr<SyntaxTreeNode>current_node = node->first_son;
+    std::vector<string>para_list;
+    std::string func_name = "";
+    std::string func_type = "";
+    int para_count = 0;
     while (current_node != NULL) {
+        //处理返回值类型
+        if (current_node->node_value == "Type")func_type = current_node->first_son->node_value;
         //处理函数名
-        if (current_node->node_value == "FunctionName") {
-            if (current_node->first_son->node_value != "main") {
-                std::cout << "other function statement except for main is not supported!" << std::endl;
-                exit(0);
+        else if (current_node->node_value == "FunctionName") {
+            func_name = current_node->first_son->node_value;
+            // 生成函数标签
+            if (func_name != "main") {
+                ass_file_handler.insert(func_name + ":", "TEXT");
+                //std::cout << "other function statement except for main is not supported!" << std::endl;
+                //exit(0);
             }
             else {
                 ass_file_handler.insert(".global main", "TEXT");
@@ -54,10 +69,66 @@ void Assembler::_function_statement(std::shared_ptr<SyntaxTreeNode> node) {
                 ass_file_handler.insert("finit", "TEXT");
             }
         }
+        // 处理函数参数
+        else if (current_node->node_value == "StateParameterList") {
+            // 解析参数并生成相应的汇编代码
+            //记录参数的数量
+
+            std::shared_ptr<SyntaxTreeNode>parameter_node = current_node->first_son;
+            while (parameter_node != NULL) {
+                //变量值类型
+                std::string para_field_type = parameter_node->first_son->node_value;
+                std::string para_type = parameter_node->first_son->right->extra_info["type"];
+                std::string para_name =parameter_node->first_son->right->node_value;
+                para_list.push_back(para_name);
+                if (para_field_type != "int") {
+                    std::cout << "not supported type in stateparameterlist!" << std::endl;
+                    exit(0);
+                }
+                //统一使用全局变量
+                //变量插入到汇编文件对应段中
+                std::string line = ".lcomm " + para_name + ", " + _sizeof(para_field_type);
+                std::string section = (para_type == "VARIABLE") ? "BSS" : "DATA";
+                ass_file_handler.insert(line, section);
+                // 将变量加入符号表
+                symbol_table[para_name] = SymbolTableItem{
+                    "VARIABLE","field_type", para_field_type
+                };
+
+                //插入赋值语句，初始化入口参数
+                line = "movl %" + reg[para_count] + "," + para_name;
+                ass_file_handler.insert(line, "TEXT");
+
+                para_count++;
+                parameter_node = parameter_node->right;
+            }
+        }
         //处理函数体
-        else if (current_node->node_value == "Sentence")traverse(current_node->first_son);
+        else if (current_node->node_value == "Sentence") { 
+            traverse(current_node->first_son); 
+            if (func_name != "main") {
+                //清理工作
+                for (int i = para_count-1; i >= 0; i--) {
+                    std::string line = "popl %" + reg[i];
+                    ass_file_handler.insert(line, "TEXT");
+                }
+                //插入返回指令
+                ass_file_handler.insert("ret", "TEXT");
+            }
+        }
         current_node = current_node->right;
     }
+
+    //清除局部变量声明
+    for (auto p : para_list) {
+        symbol_table.erase(p);
+    }
+    //main函数在结尾插入call exit调用程序退出汇编指令
+    if (func_name == "main") {
+        std::string line = "call exit";
+        ass_file_handler.insert(line, "TEXT");
+    }
+    function_table[func_name] = func_type;
 }
 //直接保存为全局变量
 void Assembler::_statement(std::shared_ptr<SyntaxTreeNode> node) {
@@ -109,49 +180,88 @@ void Assembler::_function_call(std::shared_ptr<SyntaxTreeNode> node) {
     auto current_node = node->first_son;
     std::string func_name;
     std::vector<std::string> parameter_list;
-
+    //TODO-->首先要清理寄存器，把edi,esi,ecx,edx中使用到的和eax全部压栈
     while (current_node != NULL) {
         if (current_node->node_type == "FUNCTION_NAME") {
             func_name = current_node->node_value;
             if (func_name != "printf" && func_name != "scanf") {
-                std::cout << "Function call except scanf and printf not supported yet!" << std::endl;
-                exit(0);
+                //std::cout << "Function call except scanf and printf not supported yet!" << std::endl;
+                //exit(0);
+                std::string line = "call " + func_name;
             }
         }
         else if (current_node->node_value == "CallParameterList") {
             auto tmp_node = current_node->first_son;
-            while (tmp_node != NULL) {
-                if (tmp_node->node_type == "DIGIT_CONSTANT" || tmp_node->node_type == "STRING_CONSTANT") {
-                    std::string label = "label_" + std::to_string(label_cnt++);
-                    //如果是字符串常量
-                    if (tmp_node->node_type == "STRING_CONSTANT") {
-                        std::string line = label + ": .asciz \"" + tmp_node->node_value + "\"";
-                        ass_file_handler.insert(line, "DATA");
-                        symbol_table[label] = { "STRING_CONSTANT", "value", tmp_node->node_value };
+            if (func_name == "printf" || func_name == "scanf") {
+                while (tmp_node != NULL) {
+                    if (tmp_node->node_type == "DIGIT_CONSTANT" || tmp_node->node_type == "STRING_CONSTANT") {
+                        std::string label = "var_" + std::to_string(variable_cnt++);
+                        //如果是字符串常量
+                        if (tmp_node->node_type == "STRING_CONSTANT") {
+                            std::string line = label + ": .asciz \"" + tmp_node->node_value + "\"";
+                            ass_file_handler.insert(line, "DATA");
+                            symbol_table[label] = { "STRING_CONSTANT", "value", tmp_node->node_value };
+                        }
+                        else {
+                            std::cout << "Digital constant parameter is not supported yet!" << std::endl;
+                            exit(0);
+                        }
+                        parameter_list.push_back(label);
+                    }
+                    else if (tmp_node->node_type == "IDENTIFIER")parameter_list.push_back(tmp_node->node_value);
+                    else if (tmp_node->node_type == "ADDRESS") {
+                        // TODO-> Handle address parameters
                     }
                     else {
-                        std::cout << "Digital constant parameter is not supported yet!" << std::endl;
+                        //其他类型的参数暂不支持
+                        std::cout << "Unsupported parameter type: " << tmp_node->node_type << std::endl;
                         exit(0);
                     }
-                    parameter_list.push_back(label);
-                }
-                else if (tmp_node->node_type == "IDENTIFIER")parameter_list.push_back(tmp_node->node_value);
-                else if (tmp_node->node_type == "ADDRESS") {
-                    // TODO-> Handle address parameters
-                }
-                else {
-                    //其他类型的参数暂不支持
-                    std::cout << "Unsupported parameter type: " << tmp_node->node_type << std::endl;
-                    exit(0);
-                }
 
-                tmp_node = tmp_node->right;
+                    tmp_node = tmp_node->right;
+                }
             }
-        }
-
+            //其他函数的参数处理
+            //目前只支持整型参数
+            else {
+                //保存返回值
+                std::string line = "pushl %eax";
+                ass_file_handler.insert(line, "TEXT");
+                int para_count = 0;
+                //caller参数传递
+                while (tmp_node != NULL) {
+                    std::string line = "pushl %" + reg[para_count];
+                    ass_file_handler.insert(line, "TEXT");
+                    if (tmp_node->node_type == "DIGIT_CONSTANT") {
+                        std::string line = "movl $" + tmp_node->node_value + ",%" + reg[para_count];
+                        ass_file_handler.insert(line, "TEXT");
+                    }
+                    else if (tmp_node->node_type == "IDENTIFIER") {
+                        auto sym = symbol_table.find(tmp_node->node_value);
+                        if (sym == symbol_table.end()) {
+                            std::cout << "Symbol not found in table: " << tmp_node->node_value << std::endl;
+                            exit(0);
+                        }
+                        std::string line = "movl " + tmp_node->node_value + ",%" + reg[para_count];
+                        ass_file_handler.insert(line, "TEXT");
+                    }
+                    else {
+                        //其他类型的参数暂不支持
+                        std::cout << "Unsupported parameter type: " << tmp_node->node_type << std::endl;
+                        exit(0);
+                    }
+                    para_count++;
+                    tmp_node = tmp_node->right;
+                }
+            }
+         }       
         current_node = current_node->right;
     }
-
+    //如果不是库函数则直接call调用
+    if (func_name != "printf" && func_name != "scanf") {
+        std::string line = "call " + func_name;
+        ass_file_handler.insert(line, "TEXT");
+    }
     // 处理printf函数调用
     if (func_name == "printf") {
         //%esp要+的值
@@ -268,6 +378,7 @@ void Assembler::_assignment(std::shared_ptr<SyntaxTreeNode> node) {
                 std::string line = "movl $" + expres.value + "," + variable_name;
                 ass_file_handler.insert(line, "TEXT");
 
+                //压栈
                 line = "filds " + variable_name;
                 ass_file_handler.insert(line, "TEXT");
                 line = "fstps " + variable_name;
@@ -304,7 +415,7 @@ void Assembler::_control_for(std::shared_ptr<SyntaxTreeNode> node) {
     // 第二部分：条件表达式（进入循环的判断条件）
     if (current_node && current_node->node_value == "Expression"&&cnt==2) {
         cnt++;
-        std::string line = "label_" + std::to_string(label_cnt++) + ":";
+        std::string line = "label_" + std::to_string(jump_cnt++) + ":";
         ass_file_handler.insert(line, "TEXT");
         ex_tmp=_expression(current_node);
         //生成跳转指令,跳转地址待定
@@ -320,10 +431,10 @@ void Assembler::_control_for(std::shared_ptr<SyntaxTreeNode> node) {
     if (current_node && current_node->node_value == "Expression") {
         _expression(current_node);
         // 返回到循环开始处
-        ass_file_handler.insert("jmp label_" + std::to_string(label_cnt-1), "TEXT");
+        ass_file_handler.insert("jmp label_" + std::to_string(jump_cnt-1), "TEXT");
     }
     // 插入for循环结束标签
-    std::string end_label = "label_" + std::to_string(label_cnt++) + ":";
+    std::string end_label = "label_" + std::to_string(jump_cnt++) + ":";
     ass_file_handler.insert(end_label, "TEXT");
     //确定跳转指令地址，修改跳转指令
     std::string line = operator_map[ex_tmp.value] + " " + end_label;
@@ -336,8 +447,6 @@ void Assembler::_control_if(std::shared_ptr<SyntaxTreeNode> node) {
     //else标、end标签和写入汇编指令
     std::string label_else, label_end,line;
     int else_jmp_index = -1,end_jmp_index=-1;
-    //labels_ifelse["label_else"] = "label_" + std::to_string(label_cnt++);
-    //labels_ifelse["label_end"] = "label_" + std::to_string(label_cnt++);
     while (current_node != NULL) {
         if (current_node->node_value == "IfControl") {
             //确保 if 控制结构的第一个子节点是一个表达式，并且其右侧兄弟节点是一个语句块
@@ -353,7 +462,7 @@ void Assembler::_control_if(std::shared_ptr<SyntaxTreeNode> node) {
             //跳过else分支,插入跳转end语句块指令
             end_jmp_index=ass_file_handler.insert("", "TEXT");
             //插入else的标签
-            label_else = "label_" + std::to_string(label_cnt++);
+            label_else = "label_" + std::to_string(jump_cnt++);
             line =label_else + ":";
             ass_file_handler.insert(line, "TEXT");
             //回填else地址
@@ -363,7 +472,7 @@ void Assembler::_control_if(std::shared_ptr<SyntaxTreeNode> node) {
         else if (current_node->node_value == "ElseControl") {
             traverse(current_node->first_son);
             //插入结束标签
-            label_end= "label_" + std::to_string(label_cnt++);
+            label_end= "label_" + std::to_string(jump_cnt++);
             line = label_end + ":";
             ass_file_handler.insert(line, "TEXT");
             //回填end地址
@@ -377,8 +486,8 @@ void Assembler::_control_while(std::shared_ptr<SyntaxTreeNode> node) {
     if (!node || !node->first_son) return;
 
     auto current_node = node->first_son;
-    std::string label_begin= "label_" + std::to_string(label_cnt++);
-    std::string label_end = "label_" + std::to_string(label_cnt++);
+    std::string label_begin= "label_" + std::to_string(jump_cnt++);
+    std::string label_end = "label_" + std::to_string(jump_cnt++);
     ExpressionResult ex_tmp;
     int end_jmp_index;
     if (current_node->node_value == "Expression") {
@@ -420,24 +529,46 @@ void Assembler::_return(std::shared_ptr<SyntaxTreeNode> node) {
         exit(0);
     }
     else {
+        //获取函数名
+        std::string func_name = node->father->left->left->first_son->node_value;
+        std::string func_return_field_type = node->father->left->left->left->first_son->node_value;
+        std::string line;
         current_node = current_node->right;
         ExpressionResult expres = _expression(current_node);
-        //目前只支持return常量
-        if (expres.type == "CONSTANT") {
-            std::string line = "pushl $" + expres.value;
-            ass_file_handler.insert(line, "TEXT");
-            line = "call exit";
-            ass_file_handler.insert(line, "TEXT");
+        if (func_name == "main") {
+            //main函数只能返回常量
+            if (expres.type != "CONSTANT") {
+                std::cout << "not supported type of return!" << std::endl;
+                exit(0);
+            }
+            line = "pushl $" + expres.value;
         }
         else {
-            std::cout << "return type not supported!" << std::endl;
-            exit(0);
+             if (func_return_field_type == "int")line = "movl %eax," + expres.value;
+             else if (func_return_field_type == "float")line = "filds "+expres.value;
+             else {
+                    std::cout << "not supported type of return!" << std::endl;
+                    exit(0);
+             }
         }
+       ass_file_handler.insert(line, "TEXT");
     }
 }
 void Assembler::_traverse_expression(std::shared_ptr<SyntaxTreeNode> node) {
     if (node == NULL)return;
-    if (node->node_type == "_Variable")operand_stack.push({ "VARIABLE",node->node_value });
+    if (node->node_type == "_Variable") { 
+       /* if(!_is_contain_function(node->node_value))*/operand_stack.push({ "VARIABLE",node->node_value });
+        ////函数调用
+        //else {
+        //    //取出eax变量
+        //    std::string line = "movl %eax,bss_tmp";
+        //    ass_file_handler.insert(line, "TEXT");
+        //    //恢复eax寄存器
+        //    line = "popl %eax";
+        //    ass_file_handler.insert(line, "TEXT");
+        //    operand_stack.push({ "VARIABLE","bss_tmp"});
+        //}
+    }
     else if (node->node_type == "_Constant")operand_stack.push({ "CONSTANT",node->node_value });
     else if (node->node_type == "_Operator")operator_stack.push(node->node_value);
     else if (node->node_type == "_ArrayName") {
@@ -730,9 +861,6 @@ ExpressionResult Assembler::_expression(std::shared_ptr<SyntaxTreeNode> node) {
                     line = "sahf";
                     ass_file_handler.insert(line, "TEXT");
 
-                    //line = operator_map[op]+" "+labels_ifelse["label_else"];
-                    //ass_file_handler.insert(line, "TEXT");
-
                     return { "BOOLEAN",op};
                 }
                 else {
@@ -769,8 +897,6 @@ ExpressionResult Assembler::_expression(std::shared_ptr<SyntaxTreeNode> node) {
                     line = "cmp %eax,%ebx";
                     ass_file_handler.insert(line, "TEXT");
 
-                    //line = operator_map[op] + " " + labels_ifelse["label_else"];
-                    //ass_file_handler.insert(line, "TEXT");
 
                     return { "BOOLEAN",op };
                 }

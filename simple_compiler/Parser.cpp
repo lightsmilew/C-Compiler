@@ -86,7 +86,7 @@ void Parser::_function_statement(std::shared_ptr<SyntaxTreeNode>father) {
 		if (tokens[index].type_n == "IDENTIFIER") {
 			func_statement_tree.add_child_node(std::make_shared<SyntaxTreeNode>("FunctionName"), func_statement_tree.root);
 			//value type extrainfo
-			func_statement_tree.add_child_node(std::make_shared<SyntaxTreeNode>(tokens[index].value, tokens[index].type_n, "FUNCTION_NAME"));
+			func_statement_tree.add_child_node(std::make_shared<SyntaxTreeNode>(tokens[index].value, "IDENTIFIER", "FUNCTION_NAME"));
 			index++;
 		}
 		else if (tokens[index].type_n == "LL_BRACKET") {
@@ -101,12 +101,13 @@ void Parser::_function_statement(std::shared_ptr<SyntaxTreeNode>father) {
 						std::shared_ptr<SyntaxTreeNode>param = std::make_shared<SyntaxTreeNode>("Parameter");
 						func_statement_tree.add_child_node(param, params_list);
 						//标识符类型
-						func_statement_tree.add_child_node(std::make_shared<SyntaxTreeNode>(tokens[index].value, "FIELD_TYPE",tokens[index].value));
+						func_statement_tree.add_child_node(std::make_shared<SyntaxTreeNode>(tokens[index].value, "FIELD_TYPE",tokens[index].value), param);
 					    //标识符
 						if (tokens[index + 1].type_n == "IDENTIFIER") {
+							//名字和类型（数组还是变量）
 							std::shared_ptr<SyntaxTreeNode>new_node = std::make_shared<SyntaxTreeNode>(tokens[index + 1].value, "IDENTIFIER", "VARIABLE");
 							new_node->set_extra_info("variable_type", tokens[index].value);
-							func_statement_tree.add_child_node(new_node);
+							func_statement_tree.add_child_node(new_node, param);
 						}
 						else {
 							std::cout << "error:function_statement_parameter!" << endl;
@@ -124,6 +125,7 @@ void Parser::_function_statement(std::shared_ptr<SyntaxTreeNode>father) {
 		//遇见左大括号则开始匹配Sentence
 		else if (tokens[index].type_n == "LB_BRACKET") {
 			_block(func_statement_tree);
+			break;
 		}
 	}
 }
@@ -401,13 +403,13 @@ void Parser::_expression(std::shared_ptr<SyntaxTreeNode> father , int in_index )
 			expr_tree.add_child_node(constant_node, root);
 			reverse_polish_expression.push_back(expr_tree);
 		}
-		// 处理变量或数组元素
+		// 处理变量或数组元素或者函数调用
 		else if (current_token.type_n == "IDENTIFIER") {
-			bool is_array_item = false;
+			bool is_variable = true;
 
 			if (index + 1 < tokens.size() && tokens[index + 1].type_n == "LM_BRACKET") {
 				// 数组元素处理
-				is_array_item = true;
+				is_variable = false;
 				SyntaxTree array_tree;
 
 				auto array_root = make_shared<SyntaxTreeNode>("Expression", "ArrayItem");
@@ -427,8 +429,20 @@ void Parser::_expression(std::shared_ptr<SyntaxTreeNode> father , int in_index )
 				}
 				reverse_polish_expression.push_back(array_tree);
 			}
-
-			if (!is_array_item) {
+			////处理函数调用（包括返回值）
+			//else if (index + 1 < tokens.size() && tokens[index + 1].type_n == "LL_BRACKET") {
+			//	SyntaxTree expr_tree;
+			//	auto root = make_shared<SyntaxTreeNode>("Expression", "Variable");
+			//	auto variable_node = make_shared<SyntaxTreeNode>(current_token.value, "_Variable");
+			//	expr_tree.root = expr_tree.current = root;
+			//	expr_tree.add_child_node(variable_node, root);
+			//	reverse_polish_expression.push_back(expr_tree);
+			//	//跳过函数调用传参识别部分
+			//	while (tokens[index].type_n != "RL_BRACKET")index++;
+			//	index++;
+			//}
+			//普通变量
+			if (is_variable) {
 				// 变量处理
 				SyntaxTree expr_tree;
 				auto root = make_shared<SyntaxTreeNode>("Expression", "Variable");

@@ -24,7 +24,7 @@
     <ClCompile Include="Parser.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="Token.cpp">
+    <ClCompile Include="PublicArray.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="Assembler.cpp">

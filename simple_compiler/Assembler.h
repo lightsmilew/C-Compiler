@@ -80,11 +80,13 @@ private:
     AssemblerFileHandler ass_file_handler;
     //第一项为类型
     std::map<std::string, SymbolTableItem> symbol_table;
-    //std::map<std::string, std::string>labels_ifelse;
+    //名字和返回值类型
+    std::map<std::string, std::string>function_table;
     std:: vector<string> sentence_type = {"Program","Sentence","Include","FunctionStatement","Statement","FunctionCall","Assignment","Control","Expression","Return"};
     std::stack<string>operator_stack;
     std::stack<OperandItem>operand_stack;
-    int label_cnt = 0;
+    int jump_cnt = 0;
+    int variable_cnt = 0;
     std::string filename;
 public:
     Assembler(const std::string &filenamei):filename(filenamei) {
@@ -115,6 +117,7 @@ public:
     bool _contain_float(OperandItem& operand_a, OperandItem& operand_b);
     //判断是否有对应sentence
     bool _is_contain_sentence(const std::string& sentence);
+    bool _is_contain_function(const std::string& function_name);
     string join(const std::vector<std::string>& list, const std::string& sep);
     void main();
 };

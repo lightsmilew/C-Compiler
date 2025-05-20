@@ -1,5 +1,9 @@
 #include <stdio.h>
-
+int test(int a, int b) {
+    int c;
+    c = a + b;
+    return c;
+}
 int main() {
     int score[6] = {76, 82, 90, 86, 79, 62};
     int credit[6] = {2, 2, 1, 2, 2, 3};
@@ -29,5 +33,6 @@ int main() {
     while(1==2){
      temp++;
     }
+
     return 0;
 }

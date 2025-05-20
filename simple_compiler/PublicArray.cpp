@@ -63,6 +63,7 @@ vector<char> delimiters = {
 vector<string> single_operators = { "!", "++", "--" };
 //双目运算符
 vector<string> double_operators = { "+", "-", "*", "/", ">", "<", ">=", "<=","==","!=" };
-
 // 运算符对汇编指令的映射
 map<string, string> operator_map = { {">", "jbe"}, {"<", "jae"}, {">=", "jb"}, {"<=", "ja"} ,{"==","jne"},{"!=","je"} };
+//支持4个参数,目前只支持整型参数
+vector<string>reg = { "edi","esi","ecx","edx" };
