@@ -17,20 +17,23 @@ var_3: .asciz "the score of student number %d is %f lower than 60.\n"
 .lcomm i, 4
 .text
 test:
-movl %edi,a
-movl %esi,b
+pushl %ebp
+movl %eap,%ebp
+movl %8(%ebp),a
+movl %12(%ebp),b
 movl a, %eax
 addl b, %eax
 movl %eax,bss_tmp
 movl bss_tmp, %edi
 movl %edi, c
 movl c,%eax
-popl %esi
-popl %edi
+popl %ebp
 ret
 .global main
 main:
 finit
+pushl %ebp
+movl %eap,%ebp
 pushl $var_0
 call printf
 add $4, %esp
@@ -109,11 +112,9 @@ jne label_5
 incl temp
 jmp label_4
 label_5:
-pushl %eax
-pushl %edi
-movl $1,%edi
-pushl %esi
-movl $2,%esi
+pushl $1
+pushl $2
 call test
+addl $8,%esp
 pushl $0
 call exit

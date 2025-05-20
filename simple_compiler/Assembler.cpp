@@ -73,9 +73,13 @@ void Assembler::_function_statement(std::shared_ptr<SyntaxTreeNode> node) {
         else if (current_node->node_value == "StateParameterList") {
             // 解析参数并生成相应的汇编代码
             //记录参数的数量
-
+            std::string line = "pushl %ebp";
+            ass_file_handler.insert(line, "TEXT");
+            line = "movl %eap,%ebp";
+            ass_file_handler.insert(line, "TEXT");
             std::shared_ptr<SyntaxTreeNode>parameter_node = current_node->first_son;
             while (parameter_node != NULL) {
+                para_count++;
                 //变量值类型
                 std::string para_field_type = parameter_node->first_son->node_value;
                 std::string para_type = parameter_node->first_son->right->extra_info["type"];
@@ -87,7 +91,7 @@ void Assembler::_function_statement(std::shared_ptr<SyntaxTreeNode> node) {
                 }
                 //统一使用全局变量
                 //变量插入到汇编文件对应段中
-                std::string line = ".lcomm " + para_name + ", " + _sizeof(para_field_type);
+                line = ".lcomm " + para_name + ", " + _sizeof(para_field_type);
                 std::string section = (para_type == "VARIABLE") ? "BSS" : "DATA";
                 ass_file_handler.insert(line, section);
                 // 将变量加入符号表
@@ -96,10 +100,9 @@ void Assembler::_function_statement(std::shared_ptr<SyntaxTreeNode> node) {
                 };
 
                 //插入赋值语句，初始化入口参数
-                line = "movl %" + reg[para_count] + "," + para_name;
+                line = "movl %" + to_string(4*(para_count+1))+"(%ebp)" + "," + para_name;
                 ass_file_handler.insert(line, "TEXT");
 
-                para_count++;
                 parameter_node = parameter_node->right;
             }
         }
@@ -107,11 +110,8 @@ void Assembler::_function_statement(std::shared_ptr<SyntaxTreeNode> node) {
         else if (current_node->node_value == "Sentence") { 
             traverse(current_node->first_son); 
             if (func_name != "main") {
-                //清理工作
-                for (int i = para_count-1; i >= 0; i--) {
-                    std::string line = "popl %" + reg[i];
-                    ass_file_handler.insert(line, "TEXT");
-                }
+                std::string line = "popl %ebp";
+                ass_file_handler.insert(line, "TEXT");
                 //插入返回指令
                 ass_file_handler.insert("ret", "TEXT");
             }
@@ -180,7 +180,7 @@ void Assembler::_function_call(std::shared_ptr<SyntaxTreeNode> node) {
     auto current_node = node->first_son;
     std::string func_name;
     std::vector<std::string> parameter_list;
-    //TODO-->首先要清理寄存器，把edi,esi,ecx,edx中使用到的和eax全部压栈
+    int para_count = 0;
     while (current_node != NULL) {
         if (current_node->node_type == "FUNCTION_NAME") {
             func_name = current_node->node_value;
@@ -225,15 +225,12 @@ void Assembler::_function_call(std::shared_ptr<SyntaxTreeNode> node) {
             //目前只支持整型参数
             else {
                 //保存返回值
-                std::string line = "pushl %eax";
-                ass_file_handler.insert(line, "TEXT");
-                int para_count = 0;
+                //std::string line = "pushl %eax";
+                //ass_file_handler.insert(line, "TEXT");
                 //caller参数传递
                 while (tmp_node != NULL) {
-                    std::string line = "pushl %" + reg[para_count];
-                    ass_file_handler.insert(line, "TEXT");
                     if (tmp_node->node_type == "DIGIT_CONSTANT") {
-                        std::string line = "movl $" + tmp_node->node_value + ",%" + reg[para_count];
+                        std::string line = "pushl $" + tmp_node->node_value ;
                         ass_file_handler.insert(line, "TEXT");
                     }
                     else if (tmp_node->node_type == "IDENTIFIER") {
@@ -242,7 +239,7 @@ void Assembler::_function_call(std::shared_ptr<SyntaxTreeNode> node) {
                             std::cout << "Symbol not found in table: " << tmp_node->node_value << std::endl;
                             exit(0);
                         }
-                        std::string line = "movl " + tmp_node->node_value + ",%" + reg[para_count];
+                        std::string line = "pushl " + tmp_node->node_value ;
                         ass_file_handler.insert(line, "TEXT");
                     }
                     else {
@@ -260,6 +257,9 @@ void Assembler::_function_call(std::shared_ptr<SyntaxTreeNode> node) {
     //如果不是库函数则直接call调用
     if (func_name != "printf" && func_name != "scanf") {
         std::string line = "call " + func_name;
+        ass_file_handler.insert(line, "TEXT");
+
+        line = "addl $" +to_string(4*para_count)+",%esp";
         ass_file_handler.insert(line, "TEXT");
     }
     // 处理printf函数调用
