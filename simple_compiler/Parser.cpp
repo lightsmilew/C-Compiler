@@ -14,16 +14,20 @@ int strToInt(const std::string& str) {
 	return num;
 }
 void Parser::readTokensFromFile(const std::string& filename) {
-	// 构造输入文件名（与 generateTokens 写出的文件一致）
+	// 构造输入文件名
 	std::stringstream ss(filename);
 	std::string split_filename;
 	std::getline(ss, split_filename, '.');
 	std::string inputFilename = split_filename + "_lexer.txt";
-
 	// 打开文件进行读取
 	std::ifstream inFile(inputFilename);
 	if (!inFile.is_open()) {
-		std::cerr << "无法打开文件进行读取: " << inputFilename << std::endl;
+		std::cout << "无法打开文件: " << inputFilename << std::endl;
+		std::cout << "自动进行词法分析...... "<< std::endl;
+		Lexer lexer(filename);
+		lexer.main();
+		lexer.generateTokens();
+		tokens = lexer.getTokens();
 		return;
 	}
 	std::string line;
@@ -38,7 +42,6 @@ void Parser::readTokensFromFile(const std::string& filename) {
 			std::cerr << "解析行失败: " << line << std::endl;
 		}
 	}
-
 	inFile.close();
 }
 //Block-->{Sentences}
