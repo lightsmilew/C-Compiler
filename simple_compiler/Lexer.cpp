@@ -2,7 +2,7 @@
 #include<fstream>
 #include <regex>
 #include<iostream>
-
+#include<sstream>
 extern map<string, string> map_token_type;
 extern vector<vector<string>> keywords;
 extern vector<string> operators;
@@ -46,6 +46,24 @@ void Lexer::display() {
         cout << p.type_n << " : " << p.value <<":"<<count<< endl;
         count++;
     }
+}
+void Lexer::generateTokens() {
+    stringstream ss(filename);
+    string split_filename;
+    getline(ss, split_filename, '.');
+    // 打开或创建文件用于写入。
+    std::ofstream outFile(split_filename+"_lexer.txt");
+    // 检查文件是否成功打开
+    if (!outFile.is_open()) {
+        std::cerr << "无法打开文件进行写入。" << std::endl;
+        return;
+    }
+    for (auto p : tokens) {
+        // 写入到文件中
+        outFile << p.type_n << " " << p.value << std::endl;
+    }
+    // 关闭文件
+    outFile.close();
 }
 void Lexer::main() {
     //读入文件

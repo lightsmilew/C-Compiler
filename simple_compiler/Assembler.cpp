@@ -948,4 +948,5 @@ void Assembler::main() {
     string split_filename;
     getline(ss, split_filename, '.');
     ass_file_handler.generateAssFile(split_filename);
+    std::cout << "成功生成汇编代码"<<std:: endl;
 }

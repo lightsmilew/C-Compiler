@@ -20,4 +20,5 @@ struct Token {
         value = string(1, v);
         type_n = (type == IDENTIFIER || type == DIGIT_CONSTANT || type == STRING_CONSTANT) ? map_token_type[to_string(type)] : map_token_type[value];
     }
+    Token(string type_n_in, string v_in) :type_n(type_n_in), value(v_in) {};
 };

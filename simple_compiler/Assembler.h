@@ -92,7 +92,8 @@ public:
     Assembler(const std::string &filenamei):filename(filenamei) {
         Parser parser(filename);
         parser.main();
-        parser.display();
+        //µ÷ÊÔÓÃ
+        //parser.display();
         tree = parser.getTree();
     }
     void _include(std::shared_ptr<SyntaxTreeNode> node = NULL);

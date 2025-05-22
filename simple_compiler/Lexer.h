@@ -17,4 +17,5 @@ public:
     vector<Token>& getTokens() { return tokens; }
     void main();
     void display();
+    void generateTokens();
 };

@@ -9,10 +9,12 @@ private:
     int index = 0;
 public:
     Parser(const std::string& filename){
-        Lexer lexer(filename);
-        lexer.main();
-        lexer.display();
-        tokens = lexer.getTokens();
+        //µ˜ ‘”√
+        //Lexer lexer(filename);
+        //lexer.main();
+        //lexer.display();
+        //tokens = lexer.getTokens();
+        readTokensFromFile(filename);
     }
     void _block(SyntaxTree fathertree);
     void _include(std::shared_ptr<SyntaxTreeNode> father=NULL);
@@ -30,5 +32,6 @@ public:
     void main();
     void dfs(std::shared_ptr<SyntaxTreeNode> node);
     void display();
+    void readTokensFromFile(const std::string& filename);
     SyntaxTree getTree() { return tree; };
 };
