@@ -6,7 +6,7 @@ private:
     string content;
     string filename;
     vector<Token> tokens;
-
+    bool is_open_file = false;
     size_t skip_blank(size_t i);
     bool is_blank(char c);
     bool is_keyword(const std::string& value);

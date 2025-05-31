@@ -14,7 +14,6 @@ public:
     AssemblerFileHandler() : dataPointer(1), bssPointer(3), textPointer(4) {
         result = { ".data", ".bss", ".lcomm bss_tmp, 4", ".text" };
     }
-
     size_t insert(const std::string& value, const std::string& type) {
         if (type == "DATA") {
             result.insert(result.begin() + dataPointer++, value);

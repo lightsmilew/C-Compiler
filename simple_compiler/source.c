@@ -13,10 +13,8 @@ int main() {
     int i;
     printf("please input your student number:");
     scanf("%d" , &stu_number);
-
     sum = 0;
     temp = 0;
-
     for(i = 0 ; i < 6 ; i++) {
          sum = sum + score[i] * credit[i];
          temp = temp + credit[i];
@@ -33,6 +31,6 @@ int main() {
     while(1==2){
      temp++;
     }
-test(1,2);
+    test(1,2);
     return 0;
 }

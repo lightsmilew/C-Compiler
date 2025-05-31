@@ -43,7 +43,6 @@ string Assembler::join(const std::vector<std::string>& list, const std::string& 
     }
     return result;
 }
-//暂时只支持main函数，目前没有处理函数参数和返回值
 void Assembler::_function_statement(std::shared_ptr<SyntaxTreeNode> node) {
     std::shared_ptr<SyntaxTreeNode>current_node = node->first_son;
     std::vector<string>para_list;
@@ -60,8 +59,6 @@ void Assembler::_function_statement(std::shared_ptr<SyntaxTreeNode> node) {
             // 生成函数标签
             if (func_name != "main") {
                 ass_file_handler.insert(func_name + ":", "TEXT");
-                //std::cout << "other function statement except for main is not supported!" << std::endl;
-                //exit(0);
             }
             else {
                 ass_file_handler.insert(".global main", "TEXT");
@@ -484,7 +481,6 @@ void Assembler::_control_if(std::shared_ptr<SyntaxTreeNode> node) {
 }
 void Assembler::_control_while(std::shared_ptr<SyntaxTreeNode> node) {
     if (!node || !node->first_son) return;
-
     auto current_node = node->first_son;
     std::string label_begin= "label_" + std::to_string(jump_cnt++);
     std::string label_end = "label_" + std::to_string(jump_cnt++);
@@ -510,7 +506,6 @@ void Assembler::_control_while(std::shared_ptr<SyntaxTreeNode> node) {
         ass_file_handler.insert(line, "TEXT");
         line = label_end + ":";
         ass_file_handler.insert(line, "TEXT");
-
         //回填end地址
         line = operator_map[ex_tmp.value] + " " + label_end;
         ass_file_handler.setCode(line, end_jmp_index);

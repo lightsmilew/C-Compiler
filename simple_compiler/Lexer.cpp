@@ -48,6 +48,7 @@ void Lexer::display() {
     }
 }
 void Lexer::generateTokens() {
+    if (!is_open_file)return;
     stringstream ss(filename);
     string split_filename;
     getline(ss, split_filename, '.');
@@ -67,11 +68,14 @@ void Lexer::generateTokens() {
 }
 void Lexer::main() {
     //读入文件
-    ifstream fs;
-    fs.open(filename, ios::in);
+    std::ifstream fs(filename);
+    if (!fs.is_open()) { 
+        std::cout << "无法打开文件: " << filename << std::endl;
+        return; 
+    }
+    is_open_file = true;
     while (getline(fs, content)) {
         size_t i = 0;
-        // 简化版的词法分析逻辑，根据需要扩展
         while (i < content.size()) {
             i=skip_blank(i);
             //识别头文件
@@ -192,14 +196,14 @@ void Lexer::main() {
                     i = skip_blank(i + 1);
                 }   
             }
-            //如果是其他未支持的字符则跳过如  : ? . ||  !  ~  ^ <<  >>  |
+            //如果是其他未支持的字符则跳过如  : ? . ||    ~  ^ <<  >>  |
             //支持识别但不支持功能            &&  +=  -=  *=  /=  %=  &=  |=  ^=  >>=  <<=
             else {
                 i++;
                 //待补充可支持的其他语法成分
                 //1.三目运算符 示例 int a=b==1?1:0;
-                //2.迭代器     示例 for(auto p:arr)
             }
         }
     }
+    fs.close();
 }

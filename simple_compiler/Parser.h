@@ -9,11 +9,6 @@ private:
     int index = 0;
 public:
     Parser(const std::string& filename){
-        //µ˜ ‘”√
-        //Lexer lexer(filename);
-        //lexer.main();
-        //lexer.display();
-        //tokens = lexer.getTokens();
         readTokensFromFile(filename);
     }
     void _block(SyntaxTree fathertree);

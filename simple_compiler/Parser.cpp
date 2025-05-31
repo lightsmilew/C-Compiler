@@ -313,8 +313,7 @@ void Parser::_for(std::shared_ptr<SyntaxTreeNode> father ) {
 	index++;
 	//识别(
 	if (tokens[index].type_n == "LL_BRACKET") {
-			index++;
-			int tmp_index = index;
+			int tmp_index = ++index;
 			while (tokens[tmp_index].type_n != "RL_BRACKET")tmp_index++;
 			_assignment(for_tree.root);
 			_expression(for_tree.root);
