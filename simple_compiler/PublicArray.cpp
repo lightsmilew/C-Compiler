@@ -43,19 +43,19 @@ map<string, string>map_token_type = {
     {";", "SEMICOLON"},
     {"#", "SHARP"}
 };
-// 关键字
+//关键字
 vector<vector<string>> keywords = {
     {"int", "float", "double", "char", "void"},
     {"if", "for", "while", "do", "else"},
     {"include", "return"}
 };
 
-// 运算符
+//运算符
 vector<string> operators = {
     "=", "&", "<", ">", "++", "--", "+", "-", "*", "/", ">=", "<=","==", "!=","!"
 };
 
-// 分隔符
+//分隔符
 vector<char> delimiters = {
     '(', ')', '{', '}', '[', ']', ',', '\"', ';'
 };
@@ -63,5 +63,7 @@ vector<char> delimiters = {
 vector<string> single_operators = { "!", "++", "--" };
 //双目运算符
 vector<string> double_operators = { "+", "-", "*", "/", ">", "<", ">=", "<=","==","!=" };
-// 运算符对汇编指令的映射
+//运算符对汇编指令的映射
 map<string, string> operator_map = { {">", "jbe"}, {"<", "jae"}, {">=", "jb"}, {"<=", "ja"} ,{"==","jne"},{"!=","je"} };
+//语义分析支持的句型
+vector<string> sentence_type = { "Program","Sentence","Include","FunctionStatement","Statement","FunctionCall","Assignment","Control","Expression","Return" };

@@ -15,6 +15,8 @@ var_3: .asciz "the score of student number %d is %f lower than 60.\n"
 .lcomm sum, 4
 .lcomm temp, 4
 .lcomm i, 4
+.lcomm n1, 4
+.lcomm n2, 4
 .text
 test:
 pushl %ebp
@@ -104,17 +106,20 @@ pushl $var_3
 call printf
 addl $16, %esp
 label_3:
+movl $10, n1
+movl $20, n2
 label_4:
-movl $1, %eax
-movl $2, %ebx
+movl n1, %eax
+movl n2, %ebx
 cmp %eax,%ebx
-jne label_5
-incl temp
-jmp label_4
-label_5:
-pushl $1
-pushl $2
+jae label_5
+pushl n1
+pushl n2
 call test
 addl $8,%esp
+incl n1
+decl n2
+jmp label_4
+label_5:
 pushl $0
 call exit

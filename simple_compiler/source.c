@@ -19,7 +19,6 @@ int main() {
          sum = sum + score[i] * credit[i];
          temp = temp + credit[i];
     }
-
     mean = sum / temp ;
     if(mean >= 60) {
          mean = mean - 60 ;
@@ -28,9 +27,14 @@ int main() {
          mean = 60 - mean ;
          printf( "the score of student number %d is %f lower than 60.\n", stu_number, mean ) ;
     }
-    while(1==2){
-     temp++;
+    int n1;
+    int n2;
+    n1 = 10;
+    n2 = 20;
+    while(n1 < n2) {
+     test(n1, n2);
+        n1++;
+        n2--;
     }
-    test(1,2);
     return 0;
 }

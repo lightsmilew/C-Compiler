@@ -81,7 +81,7 @@ private:
     std::map<std::string, SymbolTableItem> symbol_table;
     //名字和返回值类型
     std::map<std::string, std::string>function_table;
-    std:: vector<string> sentence_type = {"Program","Sentence","Include","FunctionStatement","Statement","FunctionCall","Assignment","Control","Expression","Return"};
+
     std::stack<string>operator_stack;
     std::stack<OperandItem>operand_stack;
     int jump_cnt = 0;
@@ -91,8 +91,6 @@ public:
     Assembler(const std::string &filenamei):filename(filenamei) {
         Parser parser(filename);
         parser.main();
-        //调试用
-        //parser.display();
         tree = parser.getTree();
     }
     void _include(std::shared_ptr<SyntaxTreeNode> node = NULL);

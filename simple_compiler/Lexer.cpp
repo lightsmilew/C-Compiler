@@ -42,7 +42,6 @@ void Lexer::display() {
     //调试用
     int count = 0;
     for (auto p : tokens) {
-        //cout << p.type_n << " : " << p.value << endl;
         cout << p.type_n << " : " << p.value <<":"<<count<< endl;
         count++;
     }
@@ -60,10 +59,8 @@ void Lexer::generateTokens() {
         return;
     }
     for (auto p : tokens) {
-        // 写入到文件中
         outFile << p.type_n << " " << p.value << std::endl;
     }
-    // 关闭文件
     outFile.close();
 }
 void Lexer::main() {
@@ -201,7 +198,6 @@ void Lexer::main() {
             else {
                 i++;
                 //待补充可支持的其他语法成分
-                //1.三目运算符 示例 int a=b==1?1:0;
             }
         }
     }

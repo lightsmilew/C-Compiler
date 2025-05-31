@@ -4,6 +4,7 @@
 
 extern vector<string> single_operators;
 extern vector<string> double_operators;
+extern vector<string> sentence_type;
 extern map<string, string> operator_map;
 
 string Assembler::_sizeof(const std::string& _type) {
