@@ -100,7 +100,7 @@ void Assembler::_function_statement(std::shared_ptr<SyntaxTreeNode> node) {
             }
             //
             for (int i = 0; i <para_count; i++) {
-                //插入赋值语句，初始化入口参数 栈的顺序相反
+                //插入赋值语句，初始化入口参数 栈的顺序相反 第一个在栈的底部
                 line = "movl %" + to_string(4 * (para_count-i+1)) + "(%ebp)" + "," + para_list[i];
                 ass_file_handler.insert(line, "TEXT");
             }
@@ -183,14 +183,17 @@ void Assembler::_function_call(std::shared_ptr<SyntaxTreeNode> node) {
     while (current_node != NULL) {
         if (current_node->node_type == "FUNCTION_NAME") {
             func_name = current_node->node_value;
-            if (func_name != "printf" && func_name != "scanf") {
-                line = "call " + func_name;
-            }
+            ////如果是自定义函数则直接调用call
+            //if (func_name != "printf" && func_name != "scanf") {
+            //    line = "call " + func_name;
+            //}
         }
         else if (current_node->node_value == "CallParameterList") {
             auto tmp_node = current_node->first_son;
+            //如果是printf或者scanf函数调用，处理调用函数参数列表
             if (func_name == "printf" || func_name == "scanf") {
                 while (tmp_node != NULL) {
+                    //处理常量
                     if (tmp_node->node_type == "DIGIT_CONSTANT" || tmp_node->node_type == "STRING_CONSTANT") {
                         std::string label = "var_" + std::to_string(variable_cnt++);
                         //如果是字符串常量
@@ -205,7 +208,9 @@ void Assembler::_function_call(std::shared_ptr<SyntaxTreeNode> node) {
                         }
                         parameter_list.push_back(label);
                     }
+                    //处理变量
                     else if (tmp_node->node_type == "IDENTIFIER")parameter_list.push_back(tmp_node->node_value);
+                    //处理指针
                     else if (tmp_node->node_type == "ADDRESS") {
                         // TODO-> Handle address parameters
                     }
@@ -221,10 +226,7 @@ void Assembler::_function_call(std::shared_ptr<SyntaxTreeNode> node) {
             //其他函数的参数处理
             //目前只支持整型参数
             else {
-                //保存返回值
-                //std::string line = "pushl %eax";
-                //ass_file_handler.insert(line, "TEXT");
-                //caller参数传递
+                //caller参数传递 将实参从左到右压栈
                 while (tmp_node != NULL) {
                     if (tmp_node->node_type == "DIGIT_CONSTANT") {
                         line = "pushl $" + tmp_node->node_value ;
@@ -256,6 +258,7 @@ void Assembler::_function_call(std::shared_ptr<SyntaxTreeNode> node) {
         line = "call " + func_name;
         ass_file_handler.insert(line, "TEXT");
 
+        //原来调用时传参压栈改变了sp寄存器 此处恢复栈指针 
         line = "addl $" +to_string(4*para_count)+",%esp";
         ass_file_handler.insert(line, "TEXT");
     }
@@ -491,7 +494,7 @@ void Assembler::_control_while(std::shared_ptr<SyntaxTreeNode> node) {
     if (current_node->node_value == "Expression") {
         ass_file_handler.insert(label_begin+":", "TEXT");
         ex_tmp=_expression(current_node);
-        //跳过block,插入跳转end语句块指令
+        //条件为假跳过block,插入跳转end语句块指令
         end_jmp_index = ass_file_handler.insert("", "TEXT");
 
         current_node = current_node->right;
@@ -500,9 +503,11 @@ void Assembler::_control_while(std::shared_ptr<SyntaxTreeNode> node) {
         std::cout << "control_while_expression error!" << std::endl;
         exit(0);
     }
+    //这里只处理了while(){}结构，未处理while();
     //循环部分
     if (current_node && current_node->node_value == "Sentence") {
         traverse(current_node->first_son);
+        //跳回条件判断表达式
         line = "jmp " + label_begin;
         ass_file_handler.insert(line, "TEXT");
         line = label_end + ":";
@@ -541,6 +546,7 @@ void Assembler::_return(std::shared_ptr<SyntaxTreeNode> node) {
             line = "pushl $" + expres.value;
         }
         else {
+            //整型放入ax寄存器 浮点型压栈
              if (func_return_field_type == "int")line = "movl " + expres.value+",%eax";
              else if (func_return_field_type == "float")line = "filds "+expres.value;
              else {
@@ -551,6 +557,7 @@ void Assembler::_return(std::shared_ptr<SyntaxTreeNode> node) {
        ass_file_handler.insert(line, "TEXT");
     }
 }
+//dfs遍历表达式树，将叶子节点压栈
 void Assembler::_traverse_expression(std::shared_ptr<SyntaxTreeNode> node) {
     if (node == NULL)return;
     if (node->node_type == "_Variable")operand_stack.push({ "VARIABLE",node->node_value });
@@ -576,19 +583,15 @@ ExpressionResult Assembler::_expression(std::shared_ptr<SyntaxTreeNode> node) {
     if (node->node_type == "Constant") {
         return { "CONSTANT", node->first_son->node_value };
     }
-
     // 清空操作数栈和操作符优先级栈
     while (!operator_stack.empty())operator_stack.pop();
     while (!operand_stack.empty())operand_stack.pop();
     // 遍历表达式树，将操作数和操作符压栈
     _traverse_expression(node);
-    // 双目运算符
-
-
     while (!operator_stack.empty()) {
         std::string op = operator_stack.top();
         operator_stack.pop();
-
+        //处理双目运算符
         if (std::find(double_operators.begin(), double_operators.end(), op) != double_operators.end()) {
             OperandItem operand_b = operand_stack.top();
             operand_stack.pop();
